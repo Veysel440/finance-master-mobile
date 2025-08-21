@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
-    "types": ["nativewind/types"]
+    "types": ["node"]
   },
-  "include": ["app", "src", "expo-env.d.ts"]
+  "include": ["app", "src", "expo-env.d.ts","src/types/nativewind.d.ts"]
 }
