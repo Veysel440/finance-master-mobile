@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { View, TextInput, FlatList, Text, ActivityIndicator } from "react-native";
-import { useTxList, type Tx } from "./service";
-import Screen from "@/components/ui/Screen";
+import { useTxList, type Tx, type TxPage } from "./service";
 import debounce from "lodash.debounce";
 
 export default function TxList() {
@@ -11,20 +10,12 @@ export default function TxList() {
     const debounced = useMemo(() => debounce((s: string) => setQ(s), 400), []);
     useEffect(() => () => debounced.cancel(), [debounced]);
 
-    const {
-        data,
-        isLoading,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage,
-        refetch,
-    } = useTxList(q);
+    const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useTxList(q);
 
-    const items: Tx[] =
-        ((data?.pages as Array<{ data: Tx[] }> | undefined)?.flatMap((p) => p.data)) ?? [];
+    const items: Tx[] = (data?.pages ?? ([] as TxPage[])).flatMap((p) => p.data);
 
     return (
-        <Screen>
+        <>
             <TextInput
                 placeholder="Ara..."
                 value={search}
@@ -50,6 +41,6 @@ export default function TxList() {
                 )}
                 ListFooterComponent={isFetchingNextPage ? <ActivityIndicator /> : null}
             />
-        </Screen>
+        </>
     );
 }

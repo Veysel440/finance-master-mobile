@@ -7,17 +7,14 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["src/*"],
+      "app/*": ["app/*"]
     },
-    "types": [
-      "node"
-    ]
+    "types": ["jest", "react", "react-native", "node"]
   },
   "include": [
     "app",
     "src",
-    "src/types/nativewind.d.ts"
+    "src/types/nativewind.d.ts","types", "jest.setup.ts", "**/*.ts", "**/*.tsx"
   ]
 }

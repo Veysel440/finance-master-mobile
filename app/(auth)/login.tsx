@@ -1,19 +1,30 @@
+import Screen from "@/components/ui/Screen";
+import { View, TextInput, Text, Pressable, Alert } from "react-native";
 import { useState } from "react";
-import { View, Text, TextInput, Pressable } from "react-native";
-import { router } from "expo-router";
 import { useAuthStore } from "@/store/auth";
 
-export default function Login() {
+export default function Login(){
+    const login = useAuthStore(s=>s.login);
     const [email,setEmail] = useState(""); const [password,setPassword]=useState("");
-    const login = useAuthStore(s=>s.login); const [err,setErr]=useState<string|null>(null);
-    const onSubmit = async () => { setErr(null); (await login({email,password})) ? router.replace("/(tabs)/dashboard") : setErr("Giriş başarısız"); };
+    const [needTotp,setNeedTotp] = useState(false); const [totp,setTotp]=useState("");
+
+    const submit = async ()=>{
+        const res = await login(email, password, needTotp ? totp : undefined);
+        if (res === "ok") return;
+        if (res === "totp_required") { setNeedTotp(true); return; }
+        Alert.alert("Hata","Giriş başarısız");
+    };
+
     return (
-        <View className="flex-1 items-center justify-center p-6">
-            <Text className="text-2xl font-bold mb-6">Finance Master</Text>
-            <TextInput className="w-full border p-3 mb-3 rounded" placeholder="E-posta" value={email} onChangeText={setEmail}/>
-            <TextInput className="w-full border p-3 mb-3 rounded" placeholder="Şifre" secureTextEntry value={password} onChangeText={setPassword}/>
-            {err ? <Text className="text-red-500 mb-2">{err}</Text> : null}
-            <Pressable onPress={onSubmit} className="bg-black p-3 rounded w-full items-center"><Text className="text-white">Giriş</Text></Pressable>
-        </View>
+        <Screen>
+            <View className="gap-3">
+                <TextInput placeholder="E-posta" autoCapitalize="none" value={email} onChangeText={setEmail} className="border p-3 rounded"/>
+                <TextInput placeholder="Şifre" secureTextEntry value={password} onChangeText={setPassword} className="border p-3 rounded"/>
+                {needTotp && (
+                    <TextInput placeholder="TOTP kodu" keyboardType="number-pad" value={totp} onChangeText={setTotp} className="border p-3 rounded"/>
+                )}
+                <Pressable onPress={submit} className="bg-black px-4 py-3 rounded"><Text className="text-white">Giriş</Text></Pressable>
+            </View>
+        </Screen>
     );
 }

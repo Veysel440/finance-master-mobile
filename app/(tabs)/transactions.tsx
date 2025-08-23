@@ -1,3 +1,10 @@
 import Screen from "@/components/ui/Screen";
 import TxList from "@/features/transactions/list";
-export default function Transactions(){ return <Screen><TxList/></Screen>; }
+
+export default function TransactionsTab() {
+    return (
+        <Screen>
+            <TxList />
+        </Screen>
+    );
+}

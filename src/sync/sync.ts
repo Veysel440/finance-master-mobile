@@ -11,5 +11,6 @@ export async function syncNow() {
         qcRef.invalidateQueries({ queryKey: ["tx.list"] });
         qcRef.invalidateQueries({ queryKey: ["tx.range"] });
         qcRef.invalidateQueries({ queryKey: ["tx.summary"] });
+        qcRef.invalidateQueries({ queryKey: ["tx.one"] });
     }
 }

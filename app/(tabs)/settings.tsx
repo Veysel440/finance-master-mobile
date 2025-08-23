@@ -42,6 +42,9 @@ export default function Settings() {
                 <Pressable onPress={() => router.push("/catalog/categories")} className="border p-3 rounded">
                     <Text>Kategoriler</Text>
                 </Pressable>
+                <Pressable onPress={()=>router.push("/settings/2fa")} className="border p-3 rounded">
+                    <Text>İki Aşamalı Doğrulama</Text>
+                </Pressable>
                 <Pressable onPress={logout} className="border p-3 rounded">
                     <Text>Çıkış</Text>
                 </Pressable>

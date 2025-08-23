@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import Toast from "react-native-toast-message";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect } from "react";
@@ -17,7 +18,6 @@ export default function RootLayout() {
         initAuth();
         hydrateSettings();
         bindQueryClient(qc);
-        // açılışta bir kez
         syncNow().catch(()=>{});
     }, [initAuth, hydrateSettings]);
 
@@ -30,6 +30,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
             <QueryClientProvider client={qc}>
                 <Stack screenOptions={{ headerShown: false }} />
+                <Toast />
             </QueryClientProvider>
         </GestureHandlerRootView>
     );

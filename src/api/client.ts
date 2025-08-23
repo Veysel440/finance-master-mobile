@@ -1,9 +1,28 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
+import Toast from "react-native-toast-message";
+
 
 export const api = axios.create({
     baseURL: process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:8080",
+    timeout: 10000,
 });
+
+api.interceptors.response.use(
+    (r) => r,
+    async (err) => {
+        const data = err?.response?.data;
+        const msg =
+            data?.message ||
+            (typeof data === "string" ? data : "") ||
+            "Beklenmeyen hata";
+        if (err?.response?.status >= 400) {
+            Toast.show({ type: "error", text1: msg });
+        }
+
+        return Promise.reject(err);
+    }
+);
 
 let refreshing = false;
 let pending: Array<() => void> = [];
@@ -23,7 +42,7 @@ api.interceptors.response.use(
         const cfg = err.config;
         if (err.response?.status !== 401 || cfg.__retried) throw err;
 
-        // refresh queue
+
         if (!refreshing) {
             refreshing = true;
             try {

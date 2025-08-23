@@ -63,7 +63,6 @@ export default function TxNew(){
 
             <Pressable onPress={submit} className="bg-black p-3 rounded items-center mt-2"><Text className="text-white">Kaydet</Text></Pressable>
 
-            {/* Wallet Quick Add */}
             <Modal visible={wModal} transparent animationType="slide">
                 <View className="flex-1 justify-end bg-black/30">
                     <View className="bg-white p-4 rounded-t-2xl gap-2">
@@ -78,7 +77,6 @@ export default function TxNew(){
                 </View>
             </Modal>
 
-            {/* Category Quick Add */}
             <Modal visible={cModal} transparent animationType="slide">
                 <View className="flex-1 justify-end bg-black/30">
                     <View className="bg-white p-4 rounded-t-2xl gap-2">
