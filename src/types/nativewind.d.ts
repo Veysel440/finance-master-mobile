@@ -1,6 +1,5 @@
 /// <reference types="nativewind/types" />
 
-// Ek güvence: RN prop'larına className ekle
 import "react-native";
 
 type ClassNameProp = { className?: string };

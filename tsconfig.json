@@ -6,8 +6,18 @@
     "noEmit": true,
     "skipLibCheck": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
-    "types": ["node"]
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "types": [
+      "node"
+    ]
   },
-  "include": ["app", "src", "expo-env.d.ts","src/types/nativewind.d.ts"]
+  "include": [
+    "app",
+    "src",
+    "src/types/nativewind.d.ts"
+  ]
 }

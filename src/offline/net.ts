@@ -1,6 +1,16 @@
 import NetInfo from "@react-native-community/netinfo";
-export const onReconnect = (fn: () => void) =>
-    NetInfo.addEventListener(state => { if (state.isConnected && state.isInternetReachable) fn(); });
-export const isOnline = async () => {
-    const s = await NetInfo.fetch(); return !!(s.isConnected && s.isInternetReachable);
-};
+
+export async function isOnline() {
+    const s = await NetInfo.fetch();
+    return Boolean(s.isConnected && s.isInternetReachable);
+}
+
+type Fn = () => void;
+let subs: Fn[] = [];
+NetInfo.addEventListener(state => {
+    if (state.isConnected && state.isInternetReachable) subs.forEach(f => f());
+});
+export function onReconnect(fn: Fn) {
+    subs.push(fn);
+    return () => { subs = subs.filter(x => x !== fn); };
+}
