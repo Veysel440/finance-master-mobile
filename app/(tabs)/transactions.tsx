@@ -1,10 +1,16 @@
 import Screen from "@/components/ui/Screen";
-import TxList from "@/features/transactions/list";
+import { useTxList } from "@/features/transactions/service";
+import TxList from "@/features/transactions/components/TxList";
 
-export default function TransactionsTab() {
+export default function TransactionsTab(){
+    const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useTxList("");
+    const flat = (data?.pages || []).flatMap(p => p.data || []);
     return (
         <Screen>
-            <TxList />
+            <TxList
+                data={flat}
+                onEnd={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+            />
         </Screen>
     );
 }

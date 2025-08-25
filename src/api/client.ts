@@ -1,70 +1,137 @@
-import axios from "axios";
+import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import * as SecureStore from "expo-secure-store";
-import Toast from "react-native-toast-message";
+import Constants from "expo-constants";
+import { mapApiError } from "./errors";
+import { toast } from "@/ui/toast/bridge";
+import { useAuthStore } from "@/store/auth";
+import { resetOnLogout } from "@/sync/sync";
 
+const ENV = (Constants.expoConfig?.extra as any)?.env || process.env.APP_ENV || "development";
+const baseURL =
+    (Constants.expoConfig?.extra as any)?.API_URL ||
+    process.env.EXPO_PUBLIC_API_URL ||
+    "http://127.0.0.1:8080";
 
 export const api = axios.create({
-    baseURL: process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:8080",
-    timeout: 10000,
+    baseURL,
+    headers: { "Content-Type": "application/json" },
+    timeout: 15000,
 });
 
-api.interceptors.response.use(
-    (r) => r,
-    async (err) => {
-        const data = err?.response?.data;
-        const msg =
-            data?.message ||
-            (typeof data === "string" ? data : "") ||
-            "Beklenmeyen hata";
-        if (err?.response?.status >= 400) {
-            Toast.show({ type: "error", text1: msg });
-        }
+/** HTTPS zorunluluğu */
+const isHttps = /^https:\/\//i.test(baseURL);
+if (ENV === "production" && !isHttps) {
+    throw new Error("HTTP baseURL prod ortamında yasak. HTTPS kullanın.");
+} else if (!isHttps) {
+    console.warn("[SECURITY] API URL HTTPS değil. Sadece geliştirmede kullanın:", baseURL);
+}
 
-        return Promise.reject(err);
+/** Token yardımcıları */
+async function getToken() {
+    const s = useAuthStore.getState() as any;
+    return s?.token ?? (await SecureStore.getItemAsync("token"));
+}
+async function getRefresh() {
+    const s = useAuthStore.getState() as any;
+    return s?.refresh ?? (await SecureStore.getItemAsync("refresh"));
+}
+async function setAuth(token: string, refresh?: string) {
+    const s = useAuthStore.getState() as any;
+    if (typeof s?.setAuth === "function") s.setAuth(token, refresh);
+    await SecureStore.setItemAsync("token", token);
+    if (refresh) await SecureStore.setItemAsync("refresh", refresh);
+}
+
+/** Sertifika pinning preflight (opsiyonel) */
+const PIN_CERT = process.env.EXPO_PUBLIC_PIN_CERT || (Constants.expoConfig?.extra as any)?.pinCert;
+let pinChecked = false;
+async function ensurePinned() {
+    if (pinChecked || !PIN_CERT || !isHttps) return;
+    try {
+        // @ts-ignore optional
+        const { fetch: rnFetch } = require("react-native-ssl-pinning");
+        const health = baseURL.replace(/\/+$/, "") + "/health";
+        await rnFetch(health, { method: "GET", timeoutInterval: 6000, sslPinning: { certs: [PIN_CERT] } });
+        pinChecked = true;
+    } catch {
+        throw new Error("SSL pinning doğrulaması başarısız.");
     }
-);
+}
 
-let refreshing = false;
-let pending: Array<() => void> = [];
+/** Refresh mutex + herd kilidi */
+let isRefreshing = false;
+let refreshPromise: Promise<string> | null = null;
+const waiters: Array<(t: string) => void> = [];
+const queue: Array<AxiosRequestConfig & { _retry?: boolean }> = [];
+function notifyAll(t: string) { while (waiters.length) waiters.shift()!(t); }
+async function ensureToken(): Promise<string> {
+    if (!isRefreshing) {
+        isRefreshing = true;
+        refreshPromise = (async () => {
+            try {
+                const r = await getRefresh();
+                if (!r) throw new Error("no_refresh");
+                const { data } = await axios.post(`${baseURL}/v1/auth/refresh`, { refresh: r }, { timeout: 10000 });
+                await setAuth(data.token, data.refresh);
+                return data.token as string;
+            } finally {
+                isRefreshing = false;
+            }
+        })();
+        refreshPromise.then((t) => notifyAll(t)).catch(() => notifyAll(""));
+    }
+    return new Promise((res) => waiters.push(res));
+}
 
-async function getAccess() { return SecureStore.getItemAsync("access_token"); }
-async function getRefresh() { return SecureStore.getItemAsync("refresh_token"); }
-
-api.interceptors.request.use(async (cfg) => {
-    const t = await getAccess();
-    if (t) cfg.headers.Authorization = `Bearer ${t}`;
-    return cfg;
+/** İstek interceptor */
+api.interceptors.request.use(async (config) => {
+    await ensurePinned();
+    const t = await getToken();
+    if (t) {
+        if ((config.headers as any)?.set) {
+            (config.headers as any).set("Authorization", `Bearer ${t}`);
+        } else {
+            config.headers = (config.headers || {}) as any;
+            (config.headers as Record<string, string>)["Authorization"] = `Bearer ${t}`;
+        }
+    }
+    return config;
 });
 
+/** Yanıt interceptor */
 api.interceptors.response.use(
-    r => r,
-    async err => {
-        const cfg = err.config;
-        if (err.response?.status !== 401 || cfg.__retried) throw err;
+    (resp) => resp,
+    async (error: AxiosError<any>) => {
+        const original = error.config as (AxiosRequestConfig & { _retry?: boolean });
+        const status = error.response?.status;
 
+        if (status === 401 && !original?._retry) {
+            original._retry = true;
+            queue.push(original);
 
-        if (!refreshing) {
-            refreshing = true;
-            try {
-                const refresh = await getRefresh();
-                if (!refresh) throw err;
-                const { data } = await axios.post(
-                    `${api.defaults.baseURL}/v1/auth/refresh`,
-                    { refresh }
-                );
-                await SecureStore.setItemAsync("access_token", data.token);
-                await SecureStore.setItemAsync("refresh_token", data.refresh);
-                pending.forEach(fn => fn()); pending = [];
-            } catch (e) {
-                pending = []; refreshing = false;
-                throw err;
+            let newToken = "";
+            try { newToken = await ensureToken(); } catch { newToken = ""; }
+            if (!newToken) {
+                try { (useAuthStore.getState() as any).logout?.(); await resetOnLogout(); } catch {}
+                return Promise.reject(error);
             }
-            refreshing = false;
+
+            const pending = [...queue]; queue.length = 0;
+            pending.forEach((cfg) => {
+                if ((cfg.headers as any)?.set) {
+                    (cfg.headers as any).set("Authorization", `Bearer ${newToken}`);
+                } else {
+                    cfg.headers = (cfg.headers || {}) as any;
+                    (cfg.headers as Record<string, string>)["Authorization"] = `Bearer ${newToken}`;
+                }
+            });
+            return api.request(pending[0]);
         }
-        await new Promise<void>(res => pending.push(res));
-        cfg.__retried = true;
-        const t = await getAccess();
-        cfg.headers.Authorization = `Bearer ${t}`;
-        return api(cfg);
+
+        try {
+            const msg = mapApiError(error.response?.data, error.response?.status);
+            toast(msg, "error");
+        } catch {}
+        return Promise.reject(error);
     }
 );

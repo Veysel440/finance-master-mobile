@@ -1,5 +1,8 @@
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-gesture-handler/jestSetup';
+import "whatwg-fetch";
+import "@testing-library/jest-native/extend-expect";
+import { server } from "@/test/msw/server";
 
 
 const back = jest.fn();
@@ -15,3 +18,7 @@ jest.mock('expo-secure-store', () => ({
     setItemAsync: jest.fn(async () => undefined),
     deleteItemAsync: jest.fn(async () => undefined),
 }));
+
+beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());

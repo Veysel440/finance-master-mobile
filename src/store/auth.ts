@@ -1,45 +1,34 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
-import { api } from "@/api/client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { resetOnLogout } from "@/sync/sync";
 
-type User = { id:number; email:string };
-type State = {
-    user?: User;
-    token?: string;
-    login: (email:string, password:string, totp?:string) => Promise<"ok"|"totp_required"|"error">;
-    logout: () => Promise<void>;
+type User = { id: number; email: string } | null;
+
+type AuthState = {
+    token: string | null;
+    refresh: string | null;
+    user: User;
+    setAuth: (token: string, refresh?: string) => void;
     init: () => Promise<void>;
+    logout: () => Promise<void>;
 };
 
-export const useAuthStore = create<State>((set)=>{
-    return {
-        async login(email, password, totp){
-            try{
-                const { data } = await api.post("/v1/auth/login", { email, password, totp, deviceId:"mobile", deviceName:"RN" });
-                set({ user: data.user, token: data.token });
-                await SecureStore.setItemAsync("token", data.token);
-                await SecureStore.setItemAsync("refresh", data.refresh);
-                api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
-                return "ok";
-            }catch(e:any){
-                const code = e?.response?.data?.code;
-                if (code === "totp_required") return "totp_required";
-                return "error";
-            }
-        },
-        async logout(){
-            try{
-                const refresh = await SecureStore.getItemAsync("refresh");
-                if (refresh) await api.post("/v1/auth/logout", { refresh });
-            }catch{}
-            await SecureStore.deleteItemAsync("token");
-            await SecureStore.deleteItemAsync("refresh");
-            set({ user: undefined, token: undefined });
-            delete api.defaults.headers.common.Authorization;
-        },
-        async init(){
-            const t = await SecureStore.getItemAsync("token");
-            if (t) { set({ token: t }); api.defaults.headers.common.Authorization = `Bearer ${t}`; }
-        }
-    };
-});
+export const useAuthStore = create<AuthState>()((set, _get) => ({
+    token: null,
+    refresh: null,
+    user: null,
+    setAuth: (token, refresh) => set({ token, refresh: refresh ?? null }),
+    init: async () => {
+        const token = (await SecureStore.getItemAsync("token")) ?? null;
+        const refresh = (await SecureStore.getItemAsync("refresh")) ?? null;
+        set({ token, refresh });
+    },
+    logout: async () => {
+        set({ token: null, refresh: null, user: null });
+        await SecureStore.deleteItemAsync("token");
+        await SecureStore.deleteItemAsync("refresh");
+        await AsyncStorage.multiRemove(["lastSyncAt"]);
+        await resetOnLogout();
+    },
+}));

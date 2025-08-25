@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
     preset: 'jest-expo/universal',
-    setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+    setupFilesAfterEnv: ["@testing-library/jest-native/extend-expect", "<rootDir>/jest.setup.ts"],
     testEnvironment: 'node',
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
