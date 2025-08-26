@@ -9,13 +9,12 @@ const config: ExpoConfig = {
     slug: "finance-master-mobile",
     scheme: "finmaster",
     extra: {
-        flags: {
-            newDashboard: process.env.FLAG_NEW_DASHBOARD === "1",
-            ftSearchDefault: process.env.FLAG_FT_DEFAULT === "1"
-        },
-        API_URL: process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:8080",
-        sentryDsn: process.env.SENTRY_DSN || "",
-        env: APP_ENV,
+        API_URL: process.env.EXPO_PUBLIC_API_URL,
+        env: process.env.APP_ENV ?? "development",
+        pinCert: "api_cert",
+        captchaProvider: process.env.EXPO_PUBLIC_CAPTCHA_PROVIDER ?? "turnstile",
+        captchaSiteKey: process.env.EXPO_PUBLIC_CAPTCHA_SITEKEY ?? "",
+        captchaBaseURL: process.env.EXPO_PUBLIC_CAPTCHA_BASEURL ?? "https://your-domain.tld"
     },
     plugins: [
         ["sentry-expo", { organization: "<org>", project: "<project>" }],

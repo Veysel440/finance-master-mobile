@@ -16,9 +16,11 @@ const tr: Record<string, string> = {
     bad_request: "Hatalı istek.",
 };
 
-export function mapApiError(data?: ApiErrorPayload, status?: number): string {
+export function mapApiError(body?: any, data?: ApiErrorPayload, status?: number): string {
     if (!data) return status && status >= 500 ? "Sunucu hatası." : "Bilinmeyen hata.";
     if (data.code && tr[data.code]) return tr[data.code];
     if (status && status >= 500) return "Sunucu hatası.";
-    return data.message || "İşlem başarısız.";
+    const code = body?.code;
+    if (code === "captcha_required") return "Güvenlik doğrulaması gerekli.";
+    return body?.message || `Hata ${status ?? ""}`;
 }

@@ -1,0 +1,26 @@
+name: Mobile E2E (Detox Android)
+
+on:
+  push:
+    paths: [ "app/**", "src/**", "e2e/**", "package.json", "pnpm-lock.yaml", ".detoxrc.js" ]
+  pull_request:
+
+jobs:
+  android-e2e:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install deps
+        run: pnpm i
+      - name: Android SDK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          target: google_apis
+          script: pnpm e2e:ci:android
